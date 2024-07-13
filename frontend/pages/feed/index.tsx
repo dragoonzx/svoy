@@ -30,7 +30,7 @@ export function Feed() {
   }
 
   const svoyToken = true;
-  const connections = ["0x0", "0x1", "0x2", "0x3", "0x4", "0x5", "0x6"];
+  const connections = ["0x0", "0x1"];
   let mainContent;
 
   if (!account) {
