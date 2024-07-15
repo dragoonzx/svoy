@@ -1,7 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "react-router-dom";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 
-export function SvoyCardShort() {
+export function SvoyCardShort({ name, description, index }: { name: string; description: string; index?: string }) {
   return (
     <div className="relative">
       <Card className="w-[380px] relative overflow-hidden text-left z-10 bg-chetoblack">
@@ -9,11 +8,11 @@ export function SvoyCardShort() {
           <CardTitle className="flex items-center justify-between">
             <div className="text-xl">
               <p>
-                Max S <span className="text-xs text-muted-foreground font-mono uppercase">[Pro]</span>
+                {name} <span className="text-xs text-muted-foreground font-mono uppercase">[Newbie]</span>
               </p>
-              <p className="font-mono text-xs text-muted-foreground">#0001</p>
+              <p className="font-mono text-xs text-muted-foreground">#{index ?? "null"}</p>
             </div>
-            <div className="text-muted-foreground text-sm flex items-center">Some description</div>
+            <div className="text-muted-foreground text-sm flex items-center">{description}</div>
           </CardTitle>
         </CardHeader>
       </Card>

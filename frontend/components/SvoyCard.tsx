@@ -2,17 +2,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { cn } from "@/lib/utils";
 
-export function SvoyCard() {
+export function SvoyCard({
+  name,
+  description,
+  socialLinks,
+  pfpUrl,
+}: {
+  name: string;
+  description: string;
+  socialLinks?: { href: string; title: string };
+  pfpUrl?: string;
+}) {
   return (
     <div className="relative">
       <Card className="w-[380px] relative overflow-hidden text-left z-10 bg-chetoblack">
         <CardHeader className="relative">
           <CardTitle className="text-3xl">
-            Max S <span className="text-sm text-muted-foreground font-mono uppercase">[Pro]</span>
+            {name} <span className="text-sm text-muted-foreground font-mono uppercase">[Newbie]</span>
           </CardTitle>
           <CardDescription className="flex">
-            <div>Svoy project creator</div>
+            <div>{description}</div>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -27,28 +38,34 @@ export function SvoyCard() {
               </span>
               <span className="flex items-center space-x-2">
                 <LinkIcon size={16} />
-                <Link className="hover:underline text-sm" to={"/app"}>
+                <Link className="hover:underline text-sm" target="_blank" to={"https://github.com/dragoonzx/svoy"}>
                   Project Github
                 </Link>
               </span>
-              <span className="flex items-center space-x-2 text-muted-foreground">
+              <span
+                className={cn(
+                  "flex items-center space-x-2",
+                  socialLinks?.href ? "text-bluez" : "text-muted-foreground",
+                )}
+              >
                 <LinkIcon size={16} />
-                <Link className="text-sm cursor-not-allowed" to={"/app"}>
-                  x.com
+                <Link
+                  className={cn("text-sm", socialLinks?.href ? "hover:underline" : "cursor-not-allowed")}
+                  to={socialLinks?.href ? socialLinks.href : "/app"}
+                  target="_blank"
+                >
+                  {socialLinks?.title ? socialLinks.title : "x.com"}
                 </Link>
               </span>
             </div>
             <div>
-              <div className="h-[72px] w-[72px] rounded-lg p-1 border border-white text-center text-xs flex items-center">
-                Showcase NFT
-              </div>
-              {/* <img
-                src="/showcase_example.png"
-                width={72}
-                height={72}
-                className="h-auto rounded-lg p-1 border border-white"
-                alt="No"
-              /> */}
+              {pfpUrl ? (
+                <img src={pfpUrl} width={72} height={72} className="h-auto rounded-lg p-1 border border-white" alt="" />
+              ) : (
+                <div className="h-[72px] w-[72px] rounded-lg p-1 border border-white text-center text-xs flex items-center">
+                  Showcase NFT
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

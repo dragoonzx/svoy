@@ -1,17 +1,20 @@
+import { SVOY_V0_ADDRESS } from "@/constants";
 import { InputTransactionData } from "@aptos-labs/wallet-adapter-react";
 
 export type MintNftArguments = {
-  collectionId: string;
-  amount: number;
+  name: string;
+  description: string;
+  uri: string;
+  userAddr?: string;
 };
 
-export const mintNFT = (args: MintNftArguments): InputTransactionData => {
-  const { collectionId, amount } = args;
+export const mintSvoyProfileNFT = (args: MintNftArguments): InputTransactionData => {
+  const { name, description, uri, userAddr } = args;
   return {
     data: {
-      function: `${import.meta.env.VITE_MODULE_ADDRESS}::launchpad::mint_nft`,
+      function: `${SVOY_V0_ADDRESS}::svoy_v0::mint_svoy_token`,
       typeArguments: [],
-      functionArguments: [collectionId, amount],
+      functionArguments: [name, description, uri, userAddr],
     },
   };
 };

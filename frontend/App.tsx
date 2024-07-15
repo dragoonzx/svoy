@@ -13,10 +13,10 @@ function Layout() {
       <Outlet />
       <footer className="mt-10 mb-10 text-center">
         <div className="flex items-center justify-center">
-          <Link target="_blank" className={buttonVariants({ variant: "link" })} to="https://t.me/maxareumad">
+          <Link target="_blank" className={buttonVariants({ variant: "link" })} to="https://t.me/svoy_aptos">
             Telegram
           </Link>
-          <Link target="_blank" className={buttonVariants({ variant: "link" })} to="https://t.me/maxareumad">
+          <Link target="_blank" className={buttonVariants({ variant: "link" })} to="https://github.com/dragoonzx/svoy">
             Github
           </Link>
         </div>

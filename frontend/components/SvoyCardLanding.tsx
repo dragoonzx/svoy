@@ -25,7 +25,7 @@ export function SvoyCardLanding() {
               </span>
               <span className="flex items-center space-x-2">
                 <LinkIcon size={16} />
-                <Link className="hover:underline text-sm" to={"/app"}>
+                <Link className="hover:underline text-sm" target="_blank" to={"https://github.com/dragoonzx/svoy"}>
                   Project Github
                 </Link>
               </span>

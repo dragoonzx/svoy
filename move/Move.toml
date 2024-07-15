@@ -9,5 +9,5 @@ AptosTokenObjects = { git = "https://github.com/aptos-labs/aptos-core.git", subd
 [addresses]
 std = "0x1"
 source = "0x4ed5ab46b9362133939885fed135b87f5760266ccb9944eebff54d61fa5a645f"
-svoy_dad = "0xa2f7841d0adfca24107649a79593d7c8167935ea0c3cbcf8ed65d80fee594f94"
-nft_receiver = "0x90d6e5e6026d8e0b3553662949d90ef655109e4e1e20587f342e1061b90fd405"
+# svoy_dad_v0 = "_"
+svoy_mom_v0 = "_"

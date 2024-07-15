@@ -7,7 +7,7 @@
 /// SvoyToken { base_uri: String, name: String,  SvoyConnections: vector<address>, social_lvl: 'newbie' | 'pro' | 'expert' | 'gigachad', Kudos: NativeTokens, Raffles: vector<SvoyRaffle> }
 /// SvoyRaffle { start_timestamp, end_timestamp, award, winner }
 /// URI of token: base_uri + name + social_lvl + connections
-module svoy_dad::svoy_v0 {
+module svoy_mom_v0::svoy_v0 {
     use std::error;
     use std::option;
     use std::string::{Self, String};
@@ -19,23 +19,17 @@ module svoy_dad::svoy_v0 {
     use aptos_framework::account::SignerCapability;
     use aptos_framework::resource_account;
     use aptos_framework::aptos_coin::AptosCoin;
+    use aptos_framework::randomness;
     use aptos_token_objects::collection;
     use aptos_token_objects::token;
     use aptos_token_objects::property_map;
-    use aptos_framework::event;
     use aptos_std::string_utils::{to_string};
 
-    /// The token does not exist
     const ETOKEN_DOES_NOT_EXIST: u64 = 1;
-    /// The provided signer is not the creator
     const ENOT_OWNER: u64 = 2;
-    /// Attempted to mutate an immutable field
     const EFIELD_NOT_MUTABLE: u64 = 3;
-    /// Attempted to burn a non-burnable token
     const ETOKEN_NOT_BURNABLE: u64 = 4;
-    /// Attempted to mutate a property map that is not mutable
     const EPROPERTIES_NOT_MUTABLE: u64 = 5;
-    // The collection does not exist
     const ECOLLECTION_DOES_NOT_EXIST: u64 = 6;
 
     /// The Svoy token collection name
@@ -43,7 +37,7 @@ module svoy_dad::svoy_v0 {
     /// The Svoy token collection description
     const COLLECTION_DESCRIPTION: vector<u8> = b"Svoy - business card`s of the future";
     /// The Svoy token collection URI
-    const COLLECTION_URI: vector<u8> = b"todo collection uri";
+    const COLLECTION_URI: vector<u8> = b"https://svoy-eta.vercel.app/";
 
     const PROP_SOCIAL_LVL: vector<u8> = b"social_lvl";
 
@@ -66,6 +60,7 @@ module svoy_dad::svoy_v0 {
         property_mutator_ref: property_map::MutatorRef,
         base_uri: String,
         name: String,
+        description: String,
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
@@ -79,16 +74,25 @@ module svoy_dad::svoy_v0 {
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    struct Raffle has store {
-        start_timestamp: u64,
-        end_timestamp: u64,
-        award: Coin<AptosCoin>,
-        winner: address,
+    struct SocialLinks has key {
+        title: String,
+        href: String,
     }
 
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
-    struct Raffles has key {
-        raffles: vector<Raffle>,
+    struct ShowcaseNFT has key {
+        pfp_url: String,
+    }
+
+    #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
+    struct Raffle has key {
+        start_timestamp: u64,
+        end_timestamp: u64,
+        award: Coin<AptosCoin>,
+        description: String,
+        tickets: vector<address>,
+        winner: address,
+        is_claimed: bool,
     }
 
     #[event]
@@ -101,29 +105,63 @@ module svoy_dad::svoy_v0 {
 
     fun init_module(sender: &signer) {
         create_svoy_collection(sender);
-        // let resource_signer_cap = resource_account::retrieve_resource_account_cap(sender, @source);
-        // move_to(sender, ModuleData {
-        //     signer_cap: resource_signer_cap,
-        //     whitelist: vector[],
-        //     only_whitelist: false,
-        // });
+        let resource_signer_cap = resource_account::retrieve_resource_account_cap(sender, @source);
+        move_to(sender, ModuleData {
+            signer_cap: resource_signer_cap,
+            whitelist: vector[],
+            only_whitelist: false,
+        });
     }
 
     #[view]
-    public fun connections(token: Object<SvoyToken>): vector<address> acquires Connections {
-        let connections = borrow_global<Connections>(object::object_address(&token));
+    public fun connections(token: address): vector<address> acquires Connections {
+        let connections = borrow_global<Connections>(token);
         connections.connections
+    }
+
+    #[view]
+    public fun get_social_links(token: address): vector<String> acquires SocialLinks {
+        let social_links = borrow_global<SocialLinks>(token);
+        let links = vector[];
+        vector::push_back(&mut links, social_links.title);
+        vector::push_back(&mut links, social_links.href);
+        links
+    }
+
+    #[view]
+    public fun get_showcase_nft_url(token: address): String acquires ShowcaseNFT {
+        let showcase_nft = borrow_global<ShowcaseNFT>(token);
+        showcase_nft.pfp_url
+    }
+
+
+    #[view]
+    public fun get_last_raffle_winner(token: address): address acquires Raffle {
+        let raffle = borrow_global<Raffle>(token);
+        raffle.winner
+    }
+
+    #[view]
+    public fun get_last_raffle_end_timestamp(token: address): u64 acquires Raffle {
+        let raffle = borrow_global<Raffle>(token);
+        raffle.end_timestamp
+    }
+
+    #[view]
+    public fun get_last_raffle_description(token: address): String acquires Raffle {
+        let raffle = borrow_global<Raffle>(token);
+        raffle.description
+    }
+
+    #[view]
+    public fun kudos_amount(token: address): u64 acquires Kudos {
+        let kudos = borrow_global<Kudos>(token);
+        coin::value(&kudos.coins)
     }
 
     #[view]
     public fun social_lvl(token: Object<SvoyToken>): String {
         property_map::read_string(&token, &string::utf8(PROP_SOCIAL_LVL))
-    }
-
-    #[view]
-    public fun connections_from_address(addr: address): vector<address> acquires Connections {
-        let token = object::address_to_object<SvoyToken>(addr);
-        connections(token)
     }
 
     #[view]
@@ -148,33 +186,33 @@ module svoy_dad::svoy_v0 {
 
     // acquires ModuleData
     public entry fun mint_svoy_token(
-        resource_signer: &signer,
+        // resource_signer: &signer,
         name: String,
         description: String,
         uri: String,
         user_addr: address
-    ) {
+    ) acquires ModuleData {
         // todo check that user doesnt have already
-        mint_svoy_token_impl(resource_signer, description, name, uri, user_addr);
+        mint_svoy_token_impl(description, name, uri, user_addr);
     }
 
     // acquires ModuleData
     fun mint_svoy_token_impl(
-        resource_signer: &signer,
+        // resource_signer: &signer,
         description: String,
         name: String,
         base_uri: String,
         soul_bound_to: address,
-    ) {
-        // let module_data = borrow_global_mut<ModuleData>(@svoy_dad);
-        // let resource_signer = aptos_framework::account::create_signer_with_capability(&module_data.signer_cap);
+    ) acquires ModuleData {
+        let module_data = borrow_global_mut<ModuleData>(@svoy_mom_v0);
+        let resource_signer = aptos_framework::account::create_signer_with_capability(&module_data.signer_cap);
 
         let collection = string::utf8(COLLECTION_NAME);
 
         let uri = modify_uri_string(base_uri, name, string::utf8(b""), 0);
 
         let constructor_ref = token::create_named_token(
-            resource_signer,
+            &resource_signer,
             collection,
             description,
             name,
@@ -197,7 +235,20 @@ module svoy_dad::svoy_v0 {
 
         move_to(&object_signer, Connections { connections: vector[] });
         move_to(&object_signer, Kudos { coins: coin::zero<AptosCoin>() });
-        move_to(&object_signer, Raffles { raffles: vector[] });
+        move_to(&object_signer, ShowcaseNFT { pfp_url: string::utf8(b"") });
+        move_to(&object_signer, SocialLinks {
+            title: string::utf8(b""),
+            href: string::utf8(b""),
+        });
+        move_to(&object_signer, Raffle {
+            start_timestamp: 0,
+            end_timestamp: 0,
+            award: coin::zero<AptosCoin>(),
+            description:  string::utf8(b""),
+            winner: @0x0,
+            is_claimed: false,
+            tickets: vector[],
+         });
 
         let properties = property_map::prepare_input(vector[], vector[], vector[]);
         property_map::init(&constructor_ref, properties);
@@ -213,32 +264,34 @@ module svoy_dad::svoy_v0 {
             burn_ref,
             property_mutator_ref,
             base_uri,
-            name
+            name,
+            description
         };
         move_to(&object_signer, svoy_token);
     }
 
-    public entry fun burn(user: &signer, token: Object<SvoyToken>) acquires SvoyToken, Connections, Kudos, Raffles {
-        authorize_owner(user, &token);
+    public entry fun burn(user: &signer, token: address) acquires SvoyToken, Connections {
+        authorize_owner(user, token);
 
-        let ambassador_token = move_from<SvoyToken>(object::object_address(&token));
+        let ambassador_token = move_from<SvoyToken>(token);
         let SvoyToken {
             mutator_ref: _,
             burn_ref,
             property_mutator_ref,
             base_uri: _,
-            name: _
+            name: _,
+            description: _
         } = ambassador_token;
 
         let Connections {
             connections: _
-        } = move_from<Connections>(object::object_address(&token));
-        let Kudos {
-            coins: _
-        } = move_from<Kudos>(object::object_address(&token));
-        let Raffles {
-            raffles: _
-        } = move_from<Raffles>(object::object_address(&token));
+        } = move_from<Connections>(token);
+        // let Kudos {
+        //     coins: _
+        // } = move_from<Kudos>(object::object_address(&token));
+        // let Raffles {
+        //     raffles: _
+        // } = move_from<Raffles>(object::object_address(&token));
 
 
         property_map::burn(property_mutator_ref);
@@ -248,44 +301,123 @@ module svoy_dad::svoy_v0 {
     /// (!) For sake of MVP new connection added only to those who have invite
     public entry fun update_svoy_connections(
         user: &signer,
-        token: Object<SvoyToken>,
+        token: address,
         new_connection: address
     ) acquires Connections, SvoyToken {
-        authorize_owner(user, &token);
+        authorize_owner(user, token);
 
-        let token_address = object::object_address(&token);
+        let token_address = token;
         let connections = borrow_global_mut<Connections>(token_address);
 
         let new_connections = vector::empty<address>();
         vector::append(&mut new_connections, connections.connections);
         vector::push_back(&mut new_connections, new_connection);
 
-        event::emit(
-            ConnectionsUpdate {
-                token,
-                old_connections: connections.connections,
-                new_connections: new_connections,
-            }
-        );
+        // event::emit(
+        //     ConnectionsUpdate {
+        //         token,
+        //         old_connections: connections.connections,
+        //         new_connections: new_connections,
+        //     }
+        // );
         connections.connections = new_connections;
         update_social_lvl(token, new_connections);
     }
 
     public entry fun give_kudos_in_apt(
         user: &signer,
-        receiver_token: Object<SvoyToken>,
+        receiver_token: address,
         amount: u64
-    ) acquires Kudos, SvoyToken {
-        let token_address = object::object_address(&receiver_token);
+    ) acquires Kudos, Raffle {
+        let token_address = receiver_token;
         let kudos = borrow_global_mut<Kudos>(token_address);
         let coins = coin::withdraw<AptosCoin>(user, amount);
         coin::merge<AptosCoin>(&mut kudos.coins, coins);
 
-        // how to 
+        let raffle = borrow_global_mut<Raffle>(token_address);
+        vector::push_back(&mut raffle.tickets, signer::address_of(user));
+    }
+
+    public entry fun set_social_links(
+        user: &signer,
+        token: address,
+        title: String,
+        href: String
+    ) acquires SocialLinks {
+        authorize_owner(user, token);
+
+        let token_address = token;
+        let social_links = borrow_global_mut<SocialLinks>(token_address);
+
+        social_links.title = title;
+        social_links.href = href;
+    }
+
+    public entry fun set_showcase_nft(
+        user: &signer,
+        token: address,
+        url: String
+    ) acquires ShowcaseNFT {
+        authorize_owner(user, token);
+
+        let token_address = token;
+        let showcase_nft = borrow_global_mut<ShowcaseNFT>(token_address);
+
+        showcase_nft.pfp_url = url;
+    }
+
+    public entry fun create_raffle(
+        user: &signer,
+        token: address,
+        description: String,
+        end_timestamp: u64
+    ) acquires Kudos, Raffle {
+        authorize_owner(user, token);
+
+        let token_address = token;
+        let kudos = borrow_global_mut<Kudos>(token_address);
+
+        let coins = coin::extract_all<AptosCoin>(&mut kudos.coins);
+
+        let raffle = borrow_global_mut<Raffle>(token_address);
+        raffle.start_timestamp =  aptos_framework::timestamp::now_microseconds();
+        // in ms
+        raffle.end_timestamp = end_timestamp;
+        coin::merge<AptosCoin>(&mut raffle.award, coins);
+        raffle.description = description;
+        raffle.winner = @0x0;
+        raffle.is_claimed = false;
+    }
+
+    #[randomness]
+    entry fun raffle_winner_and_transfer(
+        token: address
+    ) acquires Raffle {
+        raffle_winner_and_transfer_internal(token);
+    }
+
+    fun raffle_winner_and_transfer_internal(
+        token: address
+    ): address acquires Raffle {
+        let token_address = token;
+        let raffle = borrow_global_mut<Raffle>(token_address);
+        assert!(aptos_framework::timestamp::now_microseconds() > raffle.end_timestamp, 777);
+        assert!(!raffle.is_claimed, 1000);
+        assert!(!vector::is_empty(&raffle.tickets), 75);
+
+        let winner_idx = randomness::u64_range(0, vector::length(&raffle.tickets));
+        let winner = *vector::borrow(&raffle.tickets, winner_idx);
+
+        let coins = coin::extract_all(&mut raffle.award);
+        coin::deposit<AptosCoin>(winner, coins);
+        raffle.is_claimed = true;
+        raffle.winner = winner;
+
+        winner
     }
 
     fun update_social_lvl(
-        token: Object<SvoyToken>,
+        token: address,
         new_connections: vector<address>
     ) acquires SvoyToken {
         let connections_count = vector::length(&new_connections);
@@ -299,7 +431,7 @@ module svoy_dad::svoy_v0 {
             SOCIAL_GIGACHAD
         };
 
-        let token_address = object::object_address(&token);
+        let token_address = token;
         let svoy_token = borrow_global<SvoyToken>(token_address);
         let property_mutator_ref = &svoy_token.property_mutator_ref;
 
@@ -325,75 +457,154 @@ module svoy_dad::svoy_v0 {
         uri
     }
 
-    inline fun authorize_owner<T: key>(owner: &signer, token: &Object<T>) {
-        let token_address = object::object_address(token);
+    inline fun authorize_owner(owner: &signer, token_address: address) {
+        let token = object::address_to_object<SvoyToken>(token_address);
         assert!(
-            exists<T>(token_address),
+            exists<SvoyToken>(token_address),
             error::not_found(ETOKEN_DOES_NOT_EXIST),
         );
         assert!(
-            object::owner(*token) == signer::address_of(owner),
+            object::owner(token) == signer::address_of(owner),
             error::permission_denied(ENOT_OWNER),
         );
     }
 
-    #[test_only]
-    use aptos_framework::account::create_account_for_test;
 
     #[test_only]
-    public fun set_up_test(origin_account: &signer, resource_acc: &signer) {
+    use aptos_framework::coin::BurnCapability;
+    #[test_only]
+    use aptos_framework::account::create_account_for_test;
+     #[test_only]
+    use aptos_std::crypto_algebra::enable_cryptography_algebra_natives;
+
+    #[test_only]
+    public fun set_up_test(origin_account: &signer, resource_acc: &signer, aptos_framework: &signer, user2: &signer): BurnCapability<AptosCoin> {
+        aptos_framework::timestamp::set_time_has_started_for_testing(aptos_framework);
+
         create_account_for_test(signer::address_of(origin_account));
         // create_account_for_test(signer::address_of(resource_acc));
 
         // create a resource account from the origin account, mocking the module publishing process
         // resource_account::create_resource_account(origin_account, vector::empty<u8>(), vector::empty<u8>());
 
+        create_account_for_test(signer::address_of(user2));
         init_module(origin_account);
+        let (burn_cap, freeze_cap, mint_cap) = coin::initialize<AptosCoin>(
+            aptos_framework,
+            string::utf8(b"TC"),
+            string::utf8(b"TC"),
+            8,
+            false,
+        );
+        coin::register<AptosCoin>(user2);
+        let coins = coin::mint<AptosCoin>(2000, &mint_cap);
+        coin::deposit(signer::address_of(user2), coins);
+        coin::destroy_mint_cap(mint_cap);
+        coin::destroy_freeze_cap(freeze_cap);
+
+        burn_cap
     }
 
-    #[test(creator = @source, resource_acc = @svoy_dad, user1 = @0x456)]
-    fun test_happy_path(creator: signer, resource_acc: signer, user1: &signer) acquires SvoyToken, Connections, Raffles, Kudos {
-        set_up_test(&creator, &resource_acc);
+    // NOTE!: tests currently dont work because of using resource accounts
+    #[test(aptos_framework = @0x1, creator = @source, resource_acc = @svoy_mom_v0, user1 = @0x456, user2 = @0x789)]
+    fun test_happy_path(aptos_framework: &signer, creator: signer, resource_acc: signer, user1: &signer, user2: &signer) acquires SvoyToken, Connections, Kudos, Raffle, ShowcaseNFT {
+        let burn_cap = set_up_test(&creator, &resource_acc, aptos_framework, user2);
 
         let token_name = string::utf8(b"Max S");
         let token_description = string::utf8(b"I <3 Aptos");
         let token_uri = string::utf8(b"todo token uri");
+
         let user1_addr = signer::address_of(user1);
+        let user2_addr = signer::address_of(user2);
+
         let creator_addr = signer::address_of(&creator);
         std::debug::print(&user1_addr);
         mint_svoy_token(
-            &creator,
+            // &creator,
             token_name,
             token_description,
             token_uri,
             user1_addr
         );
+        let token_name2 = string::utf8(b"Fake Max S");
+        mint_svoy_token(
+            // &creator,
+            token_name2,
+            token_description,
+            token_uri,
+            user2_addr
+        );
         let collection_name = string::utf8(COLLECTION_NAME);
-        let token_address = token::create_token_address(
+        let token_address1 = token::create_token_address(
             &creator_addr,
             &collection_name,
             &token_name
         );
-        let token = object::address_to_object<SvoyToken>(token_address);
-        assert!(object::owner(token) == user1_addr, 1);
 
-        update_svoy_connections(user1, token, @0x1);
+        let token_address2 = token::create_token_address(
+            &creator_addr,
+            &collection_name,
+            &token_name2
+        );
+        
+        
+        let token1 = token_address1;
+        // assert!(object::owner(token1) == user1_addr, 1);
 
-        assert!(vector::length(&connections(token)) == 1, 3);
+        let token2 = token_address2;
 
-        let i = 0;
-        loop {
-            i = i + 1;
-            update_svoy_connections(user1, token, @0x1);
-            if (i > 10) break;
-        };
+        update_svoy_connections(user1, token1, user2_addr);
 
-        assert!(social_lvl(token) == string::utf8(SOCIAL_EXPERT), 2);
+        assert!(vector::length(&connections(token1)) == 1, 3);
 
-        let token_addr = object::object_address(&token);
-        assert!(exists<SvoyToken>(token_addr), 6);
-        burn(user1, token);
-        assert!(!exists<SvoyToken>(token_addr), 7);
+        assert!(social_lvl_from_address(token1) == string::utf8(SOCIAL_NEWBIE), 2);
+
+        let token1_addr = token1;
+        assert!(exists<SvoyToken>(token1_addr), 6);
+
+        // give kudos
+        give_kudos_in_apt(
+            user2,
+            token1,
+            500
+        );
+
+        assert!(coin::balance<AptosCoin>(user2_addr) == 1500, 321);
+        assert!(kudos_amount(token1) == 500, 322);
+
+        // raffle
+        enable_cryptography_algebra_natives(aptos_framework);
+        randomness::initialize_for_testing(aptos_framework);
+        create_raffle(user1, token1, string::utf8(b"Sub to my X profile"), aptos_framework::timestamp::now_microseconds());
+        aptos_framework::timestamp::fast_forward_seconds(500);
+        assert!(get_last_raffle_winner(token1) == @0x0, 500);
+        let winner = raffle_winner_and_transfer_internal(token1);
+        std::debug::print(&winner);
+
+        assert!(get_last_raffle_winner(token1) == user2_addr, 501);
+        assert!(coin::balance<AptosCoin>(user2_addr) == 2000, 502);
+        assert!(kudos_amount(token1) == 0, 322);
+
+        let favorite_nft_pfp_url = string::utf8(b"https://mypfp.com/image.png");
+        // showcase nft
+        set_showcase_nft(
+            user1,
+            token1,
+            favorite_nft_pfp_url
+        );
+        assert!(get_showcase_nft_url(token1) == favorite_nft_pfp_url, 1454);
+
+        set_showcase_nft(
+            user2,
+            token2,
+            favorite_nft_pfp_url
+        );
+        assert!(get_showcase_nft_url(token2) == favorite_nft_pfp_url, 1454);
+
+        burn(user1, token1);
+        burn(user2, token2);
+        assert!(!exists<SvoyToken>(token1_addr), 7);
+        coin::destroy_burn_cap(burn_cap);
     }
 
     // #[test(creator = @0x123, user1 = @0x456)]
