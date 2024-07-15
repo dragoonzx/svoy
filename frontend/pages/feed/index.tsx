@@ -28,8 +28,6 @@ export function Feed() {
   const { data, isLoading } = useGetCollectionData(account?.address);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  // [] - call random to claim award
-  // [] - skeleton loaders
   const svoyToken = data
     ? data.current_token_ownerships_v2.find(
         (token: any) => token?.current_token_data?.collection_id === SVOY_V0_COLLECTION_ADDRESS,

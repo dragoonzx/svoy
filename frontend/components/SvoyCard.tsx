@@ -3,6 +3,7 @@ import { LinkIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "./ui/skeleton";
 
 export function SvoyCard({
   name,
@@ -19,11 +20,12 @@ export function SvoyCard({
     <div className="relative">
       <Card className="w-[380px] relative overflow-hidden text-left z-10 bg-chetoblack">
         <CardHeader className="relative">
-          <CardTitle className="text-3xl">
-            {name} <span className="text-sm text-muted-foreground font-mono uppercase">[Newbie]</span>
+          <CardTitle className="text-3xl flex items-center gap-2">
+            {name ? name : <Skeleton className="h-[36px] w-[100px]" />}{" "}
+            <span className="text-sm text-muted-foreground font-mono uppercase">[Newbie]</span>
           </CardTitle>
           <CardDescription className="flex">
-            <div>{description}</div>
+            <div>{description ? description : <Skeleton className="h-[20px] w-[200px]" />}</div>
           </CardDescription>
         </CardHeader>
         <CardContent>
